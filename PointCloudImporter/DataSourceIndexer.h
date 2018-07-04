@@ -21,7 +21,7 @@ namespace ambergris { namespace RealityComputing { namespace Import {
     public:
         DataSourceIndexer( Common::IRCUserDataSource& dataSource, 
             const std::wstring& sourceName,
-            bool isTerrestrial = true );
+            bool isTerrestrial = false );
         ~DataSourceIndexer();
 
         virtual Common::IRCUserDataSource::ErrorCode parsePoints( std::wstring& errorLog ) override;

@@ -108,10 +108,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>E:\Projects\SmartModelTools\FBXViewer\BgFbxViewer\BgFbxViewer\RealityComputing\include;E:\Projects\V8\Urho3D\msvc14\include;E:\Projects\V8\PointCloudImporter\PointCloudImporter;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>E:\Projects\V8\PointCloudImporter\x64\Release;E:\Projects\3rdParties\boost_1_66_0_msvc14\lib64-msvc-14.0;E:\Projects\CRD\realitycapture-platform\thirdparty\ThirdParty\TBB\4.2\include\vc14;E:\Projects\SmartModelTools\FBXViewer\BgFbxViewer\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>PointCloudImporter.lib;RcCommon.lib;RcLogging.lib;RcUtility.lib;E:\Projects\V8\Urho3D\msvc14\lib\Urho3D.lib;E:\Projects\3rdParties\LAStools\LASzip\Debug\LASzip.lib;E:\Projects\CRD\realitycapture-platform\thirdparty\ThirdParty\TBB\4.2\include\vc14\tbb.lib;user32.lib;gdi32.lib;winmm.lib;imm32.lib;ole32.lib;oleaut32.lib;version.lib;uuid.lib;ws2_32.lib;dbghelp.lib;opengl32.lib;kernel32.lib;winspool.lib;shell32.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

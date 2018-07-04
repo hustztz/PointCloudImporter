@@ -45,14 +45,13 @@ namespace
 //Class VoxelCreator
 //////////////////////////////////////////////////////////////////////////
 template<typename PointType>
-VoxelOctreeCreator<PointType>::VoxelOctreeCreator(std::vector<PointType>& points, const std::wstring& voxelName, const std::wstring& tempFolder, const ambergris::RealityComputing::Common::RCBox& svoBounds,
+VoxelOctreeCreator<PointType>::VoxelOctreeCreator(std::vector<PointType>& points, const std::wstring& voxelName, const std::wstring& resourceFolder, const ambergris::RealityComputing::Common::RCBox& svoBounds,
             int maxDepth, double stopSize, double minPointDistance, bool hasNormals, bool hasTimestamps, bool logOutput, const CancelCallback& cb) :
     m_startDepth(maxDepth),
     m_LeafStopSplitSize(stopSize),
     m_minPointDistance(minPointDistance),
     m_cancelCb(cb),
-    m_fileName(tempFolder + voxelName + std::wstring( TEMP_VOXEL_OCTREE_EXTENSION )),
-    m_timeStampFileName(tempFolder + voxelName + std::wstring( TEMP_VOXEL_TIMESTAMP_EXTENSION )),
+	m_resourceFileName(resourceFolder + voxelName),
     m_octreePoints(points),
     m_amountOfPoints(static_cast<int>(m_octreePoints.size())),
     m_outputToLog(logOutput),
@@ -70,7 +69,7 @@ VoxelOctreeCreator<PointType>::VoxelOctreeCreator(std::vector<PointType>& points
     if( m_outputToLog )
     {
         RCLog::getLogFile()->addMessage( L"=============================");
-        RCLog::getLogFile()->addMessage( m_fileName.c_str() );
+        RCLog::getLogFile()->addMessage(m_resourceFileName.c_str() );
     }
 }
 
@@ -402,127 +401,89 @@ bool VoxelOctreeCreator<PointType>::updateOctreeLeafNodeData( int pointIndex )
 template<typename PointType>
 bool VoxelOctreeCreator<PointType>::saveToDisk(OctreeIntermediateNode<PointType>* leafPtr)
 {
-    std::vector<AgVoxelInteriorNode> nodeList[MAX_SVO_NODE_LEVELS];
     //create interior node lists
     for( int i = 0; i < ( m_maxLeafDepth + 1 ); i++ )
     {
         VoxelInformation* curVoxDepthPtr = &m_voxelInfoList[i];
         if (!curVoxDepthPtr) continue;
+
+		std::vector<AgVoxelLeafNode> leafNodeList;
         for( int j = 0; j < static_cast<int>( curVoxDepthPtr->m_interiorNodes.size() ); j++ )
         {
             VoxelHelperNode* curHelperNodePtr = curVoxDepthPtr->m_interiorNodes[j];
+			if(!curHelperNodePtr)
+				continue;
 
-            int childIndex = 0;
-            for( int k = 0; k < 8; k++ )
-                if( curHelperNodePtr->m_childList[k] ) //adjust bitfield
-                    childIndex |= ( 1 << k ); 
+			if (curHelperNodePtr->m_isVoxelLeaf)
+			{
+				for (int k = 0; k < curHelperNodePtr->m_pointIndices.size(); k++)
+				{
+					int index = curHelperNodePtr->m_pointIndices.at(k);
+					if (index > m_amountOfPoints)
+						continue;
 
-			AgVoxelInteriorNode interiorNode;
-            interiorNode.setChildInfo ( childIndex );
-            interiorNode.setIndexToChild ( curHelperNodePtr->m_indexToFirstChild );
-            interiorNode.setLeafInfo ( curHelperNodePtr->m_isVoxelLeaf );
+					//convert to leaf node
+					AgVoxelLeafNode leafNode;
+					const PointType& curPoint = m_octreePoints[i];
 
-            //add to current list
-            nodeList[i].push_back( interiorNode );
+					RCVector3d rawOffset = 1000 * (curPoint.m_pos - m_rootPtr->m_svoBounds.getMin());
+					leafNode.setRawOffsetFromBoundingBox(Urho3D::Vector3((float)rawOffset.x, (float)rawOffset.y, (float)rawOffset.z));
+					leafNode.setRGBA(AgCompactColor(curPoint.m_rgba[0], curPoint.m_rgba[1], curPoint.m_rgba[2], curPoint.m_rgba[3]));
+					leafNode.setNormal(curPoint.m_normal);
+					leafNode.setLidarClassification(curPoint.m_misc[0]);
+					leafNode.setPrimitiveClassification(curPoint.m_misc[3]);
+					//double timeStamp = curPoint.m_reserved;
+
+					leafNodeList.push_back(leafNode);
+				}
+			}
+			else
+			{
+				//convert to leaf node
+				AgVoxelLeafNode leafNode;
+
+				RCVector3d rawOffset = 1000 * (0.5f*curHelperNodePtr->m_svoBounds.getMax() + 0.5f*curHelperNodePtr->m_svoBounds.getMin() - m_rootPtr->m_svoBounds.getMin());
+				leafNode.setRawOffsetFromBoundingBox(Urho3D::Vector3((float)rawOffset.x, (float)rawOffset.y, (float)rawOffset.z));
+				leafNode.setRGBA(AgCompactColor(curHelperNodePtr->m_rgba[0], curHelperNodePtr->m_rgba[1], curHelperNodePtr->m_rgba[2], curHelperNodePtr->m_rgba[3]));
+				leafNode.setNormal(curHelperNodePtr->m_normalId);
+				leafNode.setLidarClassification(curHelperNodePtr->m_lidarClassification);
+				leafNode.setPrimitiveClassification(curHelperNodePtr->m_primitiveClassification);
+
+				leafNodeList.push_back(leafNode);
+			}
         }
+		if (!leafNodeList.empty())
+		{
+			//now output to disk
+			std::wstringstream ss;
+			ss << i;
+			std::wstring  fileName = m_resourceFileName + std::wstring(L"_") + ss.str() + std::wstring(VOXEL_RESOURCE_EXTENSION);
+			fs::ofstream outputStream(fileName, std::ios::out | std::ios::binary);
+			if (outputStream.is_open())
+			{
+				char fileID[4] = {'P', 'C', 'V', 'L'};
+				outputStream.write(fileID, 4U);
+				float offset[3];
+				offset[0] = (float)m_rootPtr->m_svoBounds.getMin().x;
+				offset[1] = (float)m_rootPtr->m_svoBounds.getMin().y;
+				offset[2] = (float)m_rootPtr->m_svoBounds.getMin().z;
+				outputStream.write((char*)&offset[0], sizeof(float) * 3);
+				unsigned amountOfPoints = static_cast<unsigned>(leafNodeList.size());
+				outputStream.write((char*)&amountOfPoints, sizeof(unsigned));
+				outputStream.write((char*)&leafNodeList[0], sizeof(AgVoxelLeafNode) * leafNodeList.size());
+
+				/*if (outputStream.fail())
+				{
+					break;
+				}*/
+				outputStream.close();
+			}
+		}
     }
-    //fill in umbrella leaf node data
-    leafPtr->m_amountOfPointsInFile = m_amountOfPoints;
-    leafPtr->m_maxTreeDepth   = m_maxLeafDepth + 1;
-    for( int i = 0; i < MAX_SVO_NODE_LEVELS; i++ )
-    {
-        leafPtr->m_numLeafNodes[i] = m_voxelInfoList[i].m_numLeafNodes; 
-        leafPtr->m_numNonLeafNodes[i] = m_voxelInfoList[i].m_numNonLeafNodes;
-        //update filesize
-        leafPtr->m_fileSize += sizeof(AgVoxelInteriorNode ) * ( leafPtr->m_numLeafNodes[i] + leafPtr->m_numNonLeafNodes[i] );
-    }
-    //update filesize
-    leafPtr->m_fileSize += sizeof(AgVoxelLeafNode ) * ( m_amountOfPoints );
-
-    {
-        //now output to disk
-        fs::ofstream outputStream( m_fileName, std::ios::out | std::ios::binary );
-        if (!outputStream.is_open())
-        {
-            return false;
-        }
-
-        //write interior node info
-        for( int i = 0; i < ( m_maxLeafDepth + 1 ); i++ )
-        {
-            outputStream.write( ( char* ) &nodeList[i][0], sizeof(AgVoxelInteriorNode ) * nodeList[i].size() );
-
-            if (outputStream.fail())
-            {
-                return false;
-            }
-        }
-
-
-        //write actual point data
-        for( int i = 0; i < m_amountOfPoints; i++ )
-        {
-            //convert to leaf node
-			AgVoxelLeafNode leafNode;
-            const PointType& curPoint = m_octreePoints[i];
-
-			RCVector3d rawOffset = 1000 * (curPoint.m_pos - m_rootPtr->m_svoBounds.getMin());
-            leafNode.setRawOffsetFromBoundingBox(Urho3D::Vector3((float)rawOffset.x, (float)rawOffset.y, (float)rawOffset.z));
-            leafNode.setRGBA (AgCompactColor( curPoint.m_rgba[0], curPoint.m_rgba[1], curPoint.m_rgba[2], curPoint.m_rgba[3] ) );
-            leafNode.setNormal ( curPoint.m_normal );
-            leafNode.setLidarClassification ( curPoint.m_misc[0] );
-            leafNode.setPrimitiveClassification ( curPoint.m_misc[3] );
-
-            outputStream.write( ( char* ) &leafNode, sizeof(AgVoxelLeafNode ) );
-
-            if (outputStream.fail())
-            {
-                return false;
-            }
-        }
-
-        outputStream.close();
-    }
-
-    if ( mHasTimestamps )
-    {
-        if ( !saveTimeStampToDisk() )
-            return false;
-    }
-
+	leafPtr->m_fileName = m_resourceFileName;
+	leafPtr->m_maxTreeDepth = m_maxLeafDepth + 1;
+	leafPtr->m_amountOfPointsInFile = m_amountOfPoints;
     return true;
-}
-
-template<>
-bool VoxelOctreeCreator<ExtendedOctreeImportPoint>::saveTimeStampToDisk()
-{
-    //now output to disk
-    fs::ofstream outputStream( m_timeStampFileName, std::ios::out | std::ios::binary );
-    if (!outputStream.is_open())
-    {
-        return false;
-    }
-
-    //write actual point data
-    for( int i = 0; i < m_amountOfPoints; i++ )
-    {
-        double timeStamp = m_octreePoints[i].m_reserved;
-        outputStream.write( ( char* ) &timeStamp, sizeof( double ) );
-
-        if (outputStream.fail())
-        {
-            return false;
-        }
-    }
-    outputStream.close();
-
-    return true;
-}
-
-template<>
-bool VoxelOctreeCreator<BasicOctreeImportPoint>::saveTimeStampToDisk()
-{
-    return false;
 }
 
 template<typename PointType>

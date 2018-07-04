@@ -32,7 +32,7 @@ namespace ambergris { namespace RealityComputing { namespace Import {
         typedef std::function<bool(void)> CancelCallback;
         static bool dummy_callback() { return false; } //Simple dummy callback
 
-        VoxelOctreeCreator(std::vector<PointType>& points, const std::wstring& voxelName, const std::wstring& tempFolder, const ambergris::RealityComputing::Common::RCBox& svoBounds,
+        VoxelOctreeCreator(std::vector<PointType>& points, const std::wstring& voxelName, const std::wstring& resourceFolder, const ambergris::RealityComputing::Common::RCBox& svoBounds,
             int maxDepth = 8, double stopSize = 0.001, double minPointDistance = 0.002, bool hasNormals = false, bool hasTimestamps = false, bool logOutput = false, const CancelCallback& cb=dummy_callback);
 
         virtual    ~VoxelOctreeCreator();
@@ -126,8 +126,6 @@ namespace ambergris { namespace RealityComputing { namespace Import {
         //////////////////////////////////////////////////////////////////////////
         bool                                                linearizeSvoTree();
 
-        bool                                                saveTimeStampToDisk();
-
         //////////////////////////////////////////////////////////////////////////
         // \brief: Calculates normals from unstructured data sets,
         //////////////////////////////////////////////////////////////////////////
@@ -144,8 +142,7 @@ namespace ambergris { namespace RealityComputing { namespace Import {
 
         CancelCallback  m_cancelCb;
 
-        std::wstring                                        m_fileName;
-        std::wstring                                        m_timeStampFileName;
+        std::wstring                                        m_resourceFileName;
 
         //////////////////////////////////////////////////////////////////////////
         // \brief: the points that going to make up the svo

@@ -91,7 +91,7 @@ void MultiThreadBuildOctreeFunctor<PointType>::operator()(tbb::blocked_range<siz
         }
 
         //initialize the octree creator for this voxel
-        VoxelOctreeCreator<PointType> creator(points, Filesystem::basename(umbreallaLeafNode->m_fileName), m_indexer->getTempFolder(), umbreallaLeafNode->m_svoBounds,
+        VoxelOctreeCreator<PointType> creator(points, Filesystem::basename(umbreallaLeafNode->m_fileName), m_indexer->getOutputFolder(), umbreallaLeafNode->m_svoBounds,
             8, m_LeafSplitStopSize,  m_minDistanceBetweenPoints, m_indexer->hasNormals(), m_indexer->hasTimeStamp(), true, cancelFunc);
 
         if (!m_hasNormals)

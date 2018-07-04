@@ -3,6 +3,7 @@
 #include <ctime>
 #include <ostream>
 #include <istream>
+#include <sstream>
 #include <Windows.h>
 
 #include <utility/RCStringUtils.h>
@@ -15,6 +16,9 @@
 #include <Urho3D/IO/FileSystem.h>
 #include <Urho3D/Core/Context.h>
 #include <Urho3D/Scene/Node.h>
+#include <Urho3D/Scene/Scene.h>
+#include <Urho3D/Resource/ResourceCache.h>
+#include <Urho3D/Graphics/Graphics.h>
 #include <Urho3D/Graphics/Material.h>
 #include <Urho3D/PointCloud/AgVoxelContainer.h>
 #include <Urho3D/PointCloud/AgPointCloudOptions.h>
@@ -143,8 +147,7 @@ int importLAS(const std::wstring &filename, const std::wstring &outputPath, Urho
 		runTimeLod->SetSVOBoundsMax(Urho3D::Vector3((float)curLeaf.m_svoBounds.getMax().x, (float)curLeaf.m_svoBounds.getMax().y, (float)curLeaf.m_svoBounds.getMax().z));
 		runTimeLod->SetAmountOfPoints(curLeaf.m_amountOfPoints);
 		runTimeLod->SetMaxLOD((char)curLeaf.m_maxDepth);
-		Urho3D::String resourceName = outputPath.c_str() + Urho3D::String(i);
-		runTimeLod->SetResourceName(resourceName);
+		runTimeLod->SetResourceName(Urho3D::String(curLeaf.m_fileName.c_str()));
 	}
 
 	clock_t stopTime = clock();
@@ -206,8 +209,14 @@ int main(int argc, char* argv[])
 	}
 
 	Urho3D::SharedPtr<Urho3D::Context> context(new Urho3D::Context());
+
+	context->RegisterSubsystem(new Urho3D::FileSystem(context));
+	context->RegisterSubsystem(new Urho3D::ResourceCache(context));
+	Urho3D::RegisterSceneLibrary(context);
+	Urho3D::RegisterGraphicsLibrary(context);
+
 	Urho3D::SharedPtr<Urho3D::Node> rootNode(new Urho3D::Node(context));
-	AgPointCloudOptions* pointCloudEngine = rootNode->CreateComponent<AgPointCloudOptions>();
+	AgPointCloudOptions* pointCloudOptions = rootNode->CreateComponent<AgPointCloudOptions>();
 
 	for (size_t i = 0; i < inputScans.size(); i++)
 	{
@@ -215,8 +224,20 @@ int main(int argc, char* argv[])
 		importLAS(inputScans[i], outputPath, pNode, createNormals);
 	}
 
+	Urho3D::PODVector<Urho3D::Node*> pointCloudNodes = rootNode->GetChildren(true);
+	if (!pointCloudNodes.Empty() && pointCloudOptions)
+	{
+		const Urho3D::Vector3& offset = pointCloudNodes[0]->GetVar(VoxelTreeRunTimeVars::VAR_SCANNERORIGIN).GetVector3();
+		pointCloudOptions->setOffset(offset);
+		for (unsigned i = 0; i < pointCloudNodes.Size(); i ++)
+		{
+			Urho3D::Vector3 translation = pointCloudNodes[i]->GetPosition() - offset;
+			pointCloudNodes[i]->SetPosition(translation);
+		}
+	}
+
 	Urho3D::File file(context);
-	Urho3D::String outName = Urho3D::String((outputPath + std::wstring(L"sdsd.xml")).c_str());
+	Urho3D::String outName = Urho3D::String((outputPath + std::wstring(L"\\sdsd.xml")).c_str());
 	if (file.Open(outName, Urho3D::FILE_WRITE))
 	{
 		rootNode->SaveXML(file);

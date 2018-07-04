@@ -30,15 +30,9 @@
 #include "OctreeImportPoint.h"
 #include "DataSourceIndexer.h"
 #include "MultithreadHelper.h"
-//#include <import/ImportUtils.h>
-//#include <import/TempFileDataSource.h>
-//#include <import/RCImportCodecUtilities.h>
-
 #include "OctreeIntermediateNode.h"
 #include "VoxelOctreeCreator.h"
 #include "PointCloudIndexer.h"
-//#include <import/IPointCloudFilter.h>
-//#include <import/PointCloudCSFilter.h>
 
 using namespace ambergris::RealityComputing::Common;
 using namespace ambergris::RealityComputing::Utility;
@@ -1034,9 +1028,7 @@ void PointCloudIndexer<PointType>::removeTempFiles()
 
         if( 
             fileExtention.compare( ( TEMP_POINT_EXTENSION ) ) == 0  ||
-            fileExtention.compare( ( TEMP_UMBRELLA_LEAF_NODE_EXTENSION ) ) == 0  ||
-            fileExtention.compare( ( TEMP_VOXEL_OCTREE_EXTENSION ) ) == 0 ||
-            fileExtention.compare( ( TEMP_VOXEL_TIMESTAMP_EXTENSION ) ) == 0
+            fileExtention.compare( ( TEMP_UMBRELLA_LEAF_NODE_EXTENSION ) ) == 0
             )
         {
             Filesystem::remove( file );

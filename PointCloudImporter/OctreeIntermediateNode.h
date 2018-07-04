@@ -159,81 +159,40 @@ namespace ambergris { namespace RealityComputing { namespace Import {
         int                                                 m_childId;
     };
 
-    //////////////////////////////////////////////////////////////////////////
-    // \brief: This data will be written to disk, these will hold the actual point data
-    //////////////////////////////////////////////////////////////////////////
-    struct OctreeLeafSaveData
-    {
-        OctreeLeafSaveData()
-            : m_maxDepth(0), m_amountOfPoints(0), m_fileSize(0), m_numNonLeafNodes{0}, m_numLeafNodes{0}, dummy{0}
-        { }
+	template<typename PointType>
+	struct OctreeIntermediateInformation
+	{
+		OctreeIntermediateInformation() { }
+		~OctreeIntermediateInformation() {}
 
-        template<typename PointType>
-        void setFromIntermediateNode( const OctreeIntermediateNode<PointType>* node )
-        {
-            m_svoBounds = node->m_svoBounds;
-            m_nodeBounds = node->m_nodeBounds;
-            m_maxDepth = node->m_maxTreeDepth;
-            m_amountOfPoints = node->m_amountOfPointsInFile;
-            m_fileSize = node->m_fileSize;
+		std::vector<OctreeIntermediateNode<PointType>* >            m_umbrellaNodeList;                    //the nodes itself
+	};
 
-            memcpy( &m_numNonLeafNodes[0], &node->m_numNonLeafNodes[0], sizeof( int ) * 32 );
-            memcpy( &m_numLeafNodes[0], &node->m_numLeafNodes[0], sizeof( int ) * 32 );
-        }
+	//////////////////////////////////////////////////////////////////////////
+	// \brief: This data will be written to disk, these will hold the actual point data
+	//////////////////////////////////////////////////////////////////////////
+	struct OctreeLeafSaveData
+	{
+		OctreeLeafSaveData()
+			: m_maxDepth(0), m_amountOfPoints(0)
+		{ }
 
-        RealityComputing::Common::RCBox            m_svoBounds;    // 48
-        RealityComputing::Common::RCBox            m_nodeBounds;   // 48 (96)
-        int                            m_maxDepth;                           // 4 (100)
-        int                            m_amountOfPoints;                     // 4 (104)
-        int                            m_fileSize;                           // 4 (108)
-        int                            m_numNonLeafNodes[32];                // 128 (236)
-        int                            m_numLeafNodes[32];                   // 128 (364)
-        char                           dummy[4];                             // 4   (368)
-    };
-    static_assert(sizeof(OctreeLeafSaveData) == 368, "sizeof(OctreeLeafSaveData) is incorrect"); // 364 + 4 pad
+		template<typename PointType>
+		void setFromIntermediateNode(const OctreeIntermediateNode<PointType>* node)
+		{
+			m_svoBounds = node->m_svoBounds;
+			m_nodeBounds = node->m_nodeBounds;
+			m_maxDepth = node->m_maxTreeDepth;
+			m_amountOfPoints = node->m_amountOfPointsInFile;
+			m_fileName = node->m_fileName;
+		}
 
-    //////////////////////////////////////////////////////////////////////////
-    // \brief: This data will be written to disk, its an SVO
-    //           where the leaf nodes contain less then 512k Points
-    //////////////////////////////////////////////////////////////////////////
-    struct OctreeLeafIntermediateNodeSaveData
-    {
-        OctreeLeafIntermediateNodeSaveData()
-            : m_normalIndex(0), m_childInfo(0), m_misc{0}, m_indexIntoLeafArray(0), m_firstChildIndex(0), dummy{0}
-        { }
-        
-        template<typename PointType>
-        void setFromIntermediateNode( const OctreeIntermediateNode<PointType>& node )
-        {
-            m_rgba = node.m_rgba;
-            m_normalIndex = node.m_normal;
-            m_childInfo = node.m_childInformation;
-            m_svoBounds = node.m_svoBounds;
-            m_firstChildIndex = node.m_firstChildIndex;
-            m_indexIntoLeafArray = node.m_indexInToLeafArray;
-
-            memcpy( m_misc, node.m_misc, sizeof( std::uint8_t ) * 4 );
-        }
-
-        RealityComputing::Common::RCVector4ub     m_rgba;               //average RGBA                    (4)
-        std::uint16_t                                       m_normalIndex;        //index into normal lookup table  (2 (6))
-        std::uint16_t                                       m_childInfo;          //child information               (2 (8))
-        RealityComputing::Common::RCBox           m_svoBounds;          //bounding box of this node       (48 (56))
-        std::uint8_t                                        m_misc[4];            //lidar, segments etc             (4 (60))
-        int                                                 m_indexIntoLeafArray; //leaf found if this is not -1    (4 (64))
-        int                                                 m_firstChildIndex;    //index to first child            (4 (68))
-        char                                                dummy[4];             // explicit padding to 8-byte bnd (4 (72))
-    };
-    static_assert(sizeof(OctreeLeafIntermediateNodeSaveData) == 72, "sizeof(OctreeLeafIntermediateNodeSaveData) is incorrect"); // 68 + 4 pad
-
-    template<typename PointType>
-    struct OctreeIntermediateInformation
-    {
-        OctreeIntermediateInformation(){ }
-        ~OctreeIntermediateInformation(){}
-
-        std::vector<OctreeIntermediateNode<PointType>* >            m_umbrellaNodeList;                    //the nodes itself
-    };
+		RealityComputing::Common::RCBox            m_svoBounds;    // 48
+		RealityComputing::Common::RCBox            m_nodeBounds;   // 48 (96)
+		int                            m_maxDepth;                           // 4 (100)
+		int                            m_amountOfPoints;                     // 4 (104)
+		std::wstring                   m_fileName;
+	};
 
     //////////////////////////////////////////////////////////////////////////
     // \brief: returns bounding box & id of child based on input point 
@@ -243,12 +202,5 @@ namespace ambergris { namespace RealityComputing { namespace Import {
 
     static const int        UMBRELLA_LEAF_NODE_WIDTH    = 10000;
     static const int        MAX_UMBRELLA_NODE_LEVELS    = 32;
-
-    enum VoxelContainerStatus
-    {
-        UNCHANGED,
-        REMOVED,
-        REINDEXED
-    };
 
 }}}

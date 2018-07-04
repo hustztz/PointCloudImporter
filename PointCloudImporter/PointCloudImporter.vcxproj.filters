@@ -33,9 +33,6 @@
     <ClCompile Include="MultiThreadHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OctreeDefs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VoxelHelperNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
